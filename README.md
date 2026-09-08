@@ -16,6 +16,7 @@ This is because this template already set up the necessary Github workflow to pu
 
 To make your addons accessible by Brisklance, the only requirement is to upload a `brisklance_module.zip` file as asset to the release of your Github repository.
 This is usually automated with Github workflow. Once you set up the file, Brisklance will find the file, download it and extract the content to `res://addons/brisklance/plugins` directory.
+The `brisklance_module.zip` is packaged from `res://addons/brisklance/self`, so any plugin you have vendored under `res://addons/brisklance/self/vendor` ships with your module as a frozen dependency.
 
 ## Directories Descriptions
 
@@ -25,8 +26,8 @@ Here discusses the crucial directory and its description to further explain on h
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `res://addons/brisklance/manager` | Here lies all the script that manages download and installations.                                                                                                  |
 | `res://addons/brisklance/plugins` | Here lies all the downloaded plugins. The installed plugins are excluded from versioning system as it is automatically installed during start up and installation. |
-| `res://addons/brisklance/self`    | Here lies your own plugin. The installed plugins will be registered to the plugin as dependencies.                                                                 |
-| `res://addons/brisklance/vendor`    | Here lies all the vendored plugin. The vendored plugins will be included to the versioning system as it is not managed by Brisklance. |
+| `res://addons/brisklance/self`    | Here lies your own plugin. The installed plugins will be registered to the plugin as dependencies. This directory is packaged into `brisklance_module.zip`.          |
+| `res://addons/brisklance/self/vendor` | Here lies all the vendored plugins. They are kept under versioning as they are not managed by Brisklance, and are packaged into `brisklance_module.zip` as frozen dependencies of your plugin. |
 
 ## Dependency Resolution
 

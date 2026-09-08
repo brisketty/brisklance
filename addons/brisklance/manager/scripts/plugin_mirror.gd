@@ -131,6 +131,7 @@ func get_vendored_plugin_directory_path() -> String:
 	return (
 		BrisklanceEditorPlugin
 		.BRISKLANCE_DIRECTORY_PATH
+		.path_join(BrisklancePluginReference.SELF_ADDON_DIRECTORY_NAME)
 		.path_join(VENDOR_DIRECTORY_NAME)
 		.path_join(make_legible_directory_name())
 	)
