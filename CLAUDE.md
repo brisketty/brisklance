@@ -31,30 +31,28 @@ Crucial project files:
 - **Mandatory Types:** All variables, parameters, and return types must be explicitly typed (`var count: int = 0`, `func foo() -> void`).
 - **Reference Type Casting & Assertions:** When working with `Variant` or erased types, cast explicitly and assert validity for objects:
 
-  ```gdscript
-  func process_node(p_value: Variant) -> void:
-      var casted := p_value as Node
-      assert(Utility.is_object_valid(casted))
-      # Proceed with operation...
+```gdscript
+func process_node(p_value: Variant) -> void:
+    var casted := p_value as Node
+    assert(Utility.is_object_valid(casted))
+    # Proceed with operation...
 
-  func process_primitive(p_value: Variant) -> void:
-      var casted := p_value as int
-      # Primitives fail automatically on invalid casts
-  ```
-
-````
+func process_primitive(p_value: Variant) -> void:
+    var casted := p_value as int
+    # Primitives fail automatically on invalid casts
+```
 
 ### B. Object Validation Policy
 
-* **Never check objects using `if obj == null:` alone.** Objects can be freed or queued for deletion while remaining non-null.
-* Always use `Utility.is_object_valid(obj)` for validity checks:
+- **Never check objects using `if obj == null:` alone.** Objects can be freed or queued for deletion while remaining non-null.
+- Always use `Utility.is_object_valid(obj)` for validity checks:
+
 ```gdscript
 func do_something(p_value: Object) -> void:
     if not Utility.is_object_valid(p_value):
         return
     # Proceed with operation...
-
-````
+```
 
 ### C. No-Privacy & Signal Handling Policy
 
@@ -71,7 +69,6 @@ func handle_node_timer_timeout() -> void:
 
 func _ready() -> void:
     node_timer.timeout.connect(handle_node_timer_timeout)
-
 ```
 
 ### D. Exported Node Reference Policy
@@ -83,7 +80,6 @@ func _ready() -> void:
 @export_group("Nodes", "node_")
 @export var node_timer: Timer
 @export var node_label: Label
-
 ```
 
 ### E. Property Setters & Update Functions
@@ -102,7 +98,6 @@ func update_from_list() -> void:
 func mutate_list() -> void:
     list.append(1)
     update_from_list() # Explicitly call update method on mutation
-
 ```
 
 ### F. Script-Scene Association
@@ -115,7 +110,6 @@ class_name Character
 
 static func get_packed_scene() -> PackedScene:
     return load("res://scenes/Character.tscn") as PackedScene
-
 ```
 
 ### G. Code Structure & Flow
@@ -133,12 +127,11 @@ func process_data() -> void:
 func process_data() -> void:
     if not is_invalid_state():
         # Main logic...
-
 ```
 
 ---
 
-## Instructions for AI Output
+## 3. Instructions for AI Output
 
 1. Whenever generating GDScript, adhere strictly to all types, naming prefixes (`node_`, `handle_`, `update_from_`), and export structures outlined above.
 2. If my request asks for a pattern that violates these rules (e.g., using `$` notation or private `_` methods), correct the approach to align with this document.
