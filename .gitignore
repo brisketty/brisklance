@@ -8,6 +8,10 @@
 .vscode/*
 !.vscode/extensions.json
 
+# Personal, non-shared Claude Code config.
+/CLAUDE.local.md
+/.claude/settings.local.json
+
 # Brisklance self-update scratch dirs (only present mid-update / after an
 # interrupted update).
 /addons/brisklance/.brisklance_manager_update/
