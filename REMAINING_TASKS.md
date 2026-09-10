@@ -13,7 +13,7 @@ All five phases are **implemented and verified** against Godot 4.7-stable
 | 2 | Release metadata fetch + `is_update_available` | Done · live GitHub API verified |
 | 3 | Download + stage + validate + swap (`apply_update`) | Done · `install_staged_update` swap + not-newer rejection verified |
 | 4 | Dock notice UI + `BrisklanceInterface` wiring (`brisklance.gd` / `.tscn`) | Done · project imports clean, classes register |
-| 5 | Publish workflow, version bump to `1.2.0`, README section | Done · workflow YAML valid |
+| 5 | Publish workflow, version bump to `1.2.1`, README section | Done · workflow YAML valid |
 
 Files changed (committed on the branch):
 
@@ -21,7 +21,7 @@ Files changed (committed on the branch):
 - `tests/test_self_updater.gd` (+ `.uid`) — new
 - `addons/brisklance/manager/interface/brisklance/brisklance.gd`
 - `addons/brisklance/manager/interface/brisklance/brisklance.tscn`
-- `addons/brisklance/manager/plugin.cfg` (`1.1.0` → `1.2.0`)
+- `addons/brisklance/manager/plugin.cfg` (`1.1.0` → `1.2.1`)
 - `.github/workflows/publish.yml`
 - `README.md`
 
@@ -37,7 +37,7 @@ Live-network scratch check (`SceneTree` + `HTTPRequest`):
 
 ```
 latest: v1.2.0            # fetch_latest_release_metadata + fetch_latest_version
-current: 1.2.0            # get_current_version reads manager/plugin.cfg
+current: 1.2.0            # get_current_version reads manager/plugin.cfg (was 1.2.0 at test time; now 1.2.1)
 update available: ''      # compare_versions: v1.2.0 is not > 1.2.0
 manager zip url: ''       # resolve_manager_zip_url: existing v1.2.0 release has no
                           # brisklance_manager.zip asset -> printerr + "" (as designed)
@@ -54,18 +54,17 @@ run 2 -> false           # 9.9.9 is not newer than 9.9.9 -> abort, staging clean
 
 ## Remaining
 
-- [ ] **Merge `feat/self-update` into `main`.**
+- [x] **Merge `feat/self-update` into `main`.**
 
-- [ ] **Decide the shipping version.** A `v1.2.0` git tag / GitHub release
-  *already exists* (it predates this feature and carries no
-  `brisklance_manager.zip`). Because `manager/plugin.cfg` is now also `1.2.0`,
-  existing installs will **not** see an update until a release tagged
-  **`v1.2.1` or higher** is published with the new workflow. Either bump
-  `manager/plugin.cfg` to `1.2.1` now, or simply cut the first real release as
-  `v1.2.1`.
+- [x] **Shipping version decided: `1.2.1`.** A `v1.2.0` tag / release already
+  exists (it predates this feature, ships `plugin.cfg` version `1.1.0`, and
+  carries no `brisklance_manager.zip`). `manager/plugin.cfg` is now `1.2.1`, so
+  the first release with self-update **must be tagged `v1.2.1`** (tag ==
+  `plugin.cfg` version going forward).
 
-- [ ] **Publish a release** with the updated `.github/workflows/publish.yml` so
-  a `brisklance_manager.zip` asset (entries rooted at `manager/`) exists.
+- [ ] **(you) Publish `v1.2.1`** with the updated `.github/workflows/publish.yml`
+  so a `brisklance_manager.zip` asset (entries rooted at `manager/`) is attached.
+  The workflow triggers on a `v*.*.*` tag push.
 
 - [ ] **End-to-end check after that release** — in a project on an older
   Brisklance:
