@@ -107,26 +107,22 @@ run 2 -> false           # 9.9.9 is not newer than 9.9.9 -> abort, staging clean
     "superseded — install v1.2.3 manually" note.
   - `v1.2.3` — first release that is both correct and safe.
 
-- [ ] **(you) Publish `v1.2.3`** — push a `v1.2.3` tag on `main` (at or after the
-  fix commit). `.github/workflows/publish.yml` triggers on `v*.*.*` and attaches
-  `brisklance.zip` / `brisklance_manager.zip` (rooted at `manager/`) /
-  `brisklance_module.zip`.
+- [x] **`v1.2.3` published** (`Latest` on `brisketty/brisklance`) with
+  `brisklance.zip` / `brisklance_manager.zip` / `brisklance_module.zip`.
 
-- [ ] **Install `v1.2.3` manually** in any project currently on `<= 1.2.2`
+- [x] **End-to-end update verified** — from a `v1.2.3` install with `plugin.cfg`
+  set a patch lower: the dock notice appears, **Update** downloads + back-up
+  swaps + restarts the editor, `manager/` comes back intact at the new version,
+  `self/` / `plugins/` / `self/vendor/` untouched, notice gone on restart.
+
+- [ ] **Install `v1.2.3` manually** in any *other* project still on `<= 1.2.2`
   (extract the release zip over `res://addons/brisklance`) — those installs
   cannot self-update past the bug.
 
-- [ ] **End-to-end check from a `v1.2.3` install** — bump its `plugin.cfg` down a
-  patch, reload, then:
-  1. Open the editor → dock shows "Brisklance update available: `vX.Y.Z`" with
-     an **Update** button (above the Github Setting row).
-  2. Click **Update** → confirm. Console prints download progress,
-     `Brisklance update downloaded.`, `Brisklance update installed. Restart the
-     editor to finish.`
-  3. Editor restarts. `manager/plugin.cfg` shows the new version;
-     `res://addons/brisklance/.brisklance_manager_update/` is gone.
-  4. `self/`, `plugins/`, `self/vendor/` unchanged.
-  5. On restart the notice no longer appears.
+- [ ] **(optional) Mark `v1.2.1` and `v1.2.2` as pre-releases** with a
+  "superseded — install v1.2.3 manually" note.
+
+**The self-update feature is complete and working as of `v1.2.3`.**
 
 ## Notes / deviations from the spec
 
