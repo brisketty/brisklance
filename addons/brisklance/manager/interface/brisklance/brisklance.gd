@@ -21,6 +21,11 @@ class_name BrisklanceInterface
 @export var node_confirm_delete_window : ConfirmationDialog
 @export var node_confirm_vendor_window : ConfirmationDialog
 @export var node_http_request : HTTPRequest
+@export var node_update_notice : HBoxContainer
+@export var node_update_notice_label : Label
+@export var node_update_trigger : BaseButton
+@export var node_confirm_update_window : ConfirmationDialog
+@export var node_update_http_request : HTTPRequest
 
 @export_group("Delete Confirmation", "delete_confirmation_")
 @export_multiline var delete_confirmation_text_prefix := "Are you sure you want to delete: "
@@ -28,10 +33,15 @@ class_name BrisklanceInterface
 @export_group("Vendor Confirmation", "vendor_confirmation_")
 @export_multiline var vendor_confirmation_text_prefix := "Are you sure you want to vendor: "
 
+@export_group("Update Notice", "update_notice_")
+@export_multiline var update_notice_text_prefix := "Brisklance update available: "
+
 
 var filtered_plugin_mirror : Array
 var deletion_plugin_mirror : BrisklancePluginMirror
 var vendor_plugin_mirror : BrisklancePluginMirror
+var self_updater := BrisklanceSelfUpdater.new()
+var is_checking_for_update := false
 
 static func get_packed_scene() -> PackedScene:
 	return preload("res://addons/brisklance/manager/interface/brisklance/brisklance.tscn") as PackedScene
@@ -63,8 +73,30 @@ func commit() -> void:
 	BrisklanceCentralDatabase.get_singleton().save_database()
 	BrisklanceLocalDevelopmentStore.get_singleton().save_store()
 	update_addons_display()
-	if not EditorInterface.get_resource_filesystem().is_scanning(): 
+	if not EditorInterface.get_resource_filesystem().is_scanning():
 		EditorInterface.get_resource_filesystem().scan()
+
+
+func check_for_update() -> void:
+	if is_checking_for_update: return
+	is_checking_for_update = true
+	var latest_version := await self_updater.is_update_available(node_update_http_request)
+	is_checking_for_update = false
+	if latest_version.is_empty():
+		node_update_notice.hide()
+		return
+	node_update_notice_label.text = update_notice_text_prefix + latest_version
+	node_update_notice.show()
+
+
+func handle_node_update_trigger_pressed() -> void:
+	node_confirm_update_window.show()
+
+
+func handle_node_confirm_update_window_confirmed() -> void:
+	if not await self_updater.apply_update(node_update_http_request):
+		return
+	EditorInterface.restart_editor(true)
 
 
 func _ready() -> void:
@@ -97,6 +129,7 @@ func _ready() -> void:
 	
 	node_refresh_trigger.pressed.connect(func() -> void:
 		commit()
+		check_for_update()
 	)
 	
 	node_confirm_delete_window.confirmed.connect(func() -> void:
@@ -176,4 +209,8 @@ func _ready() -> void:
 		commit()
 		node_configure_github_setting_window.hide()
 	)
-	
+
+	node_update_trigger.pressed.connect(handle_node_update_trigger_pressed)
+	node_confirm_update_window.confirmed.connect(handle_node_confirm_update_window_confirmed)
+
+	check_for_update()

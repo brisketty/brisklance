@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://cinpqrfylgrj4" path="res://addons/brisklance/manager/interface/brisklance/brisklance.gd" id="1_7hwos"]
 
-[node name="Brisklance" type="Control" unique_id=1250311431 node_paths=PackedStringArray("node_filter_edit", "node_show_install_trigger", "node_refresh_trigger", "node_selection_actions", "node_show_confirm_vendor_trigger", "node_show_confirm_delete_trigger", "node_addons_display", "node_github_setting_configure_trigger", "node_install_window", "node_install_repository_name_edit", "node_install_tag_edit", "node_install_trigger", "node_configure_github_setting_window", "node_github_setting_api_key_edit", "node_github_setting_save_trigger", "node_confirm_delete_window", "node_confirm_vendor_window", "node_http_request")]
+[node name="Brisklance" type="Control" unique_id=1250311431 node_paths=PackedStringArray("node_filter_edit", "node_show_install_trigger", "node_refresh_trigger", "node_selection_actions", "node_show_confirm_vendor_trigger", "node_show_confirm_delete_trigger", "node_addons_display", "node_github_setting_configure_trigger", "node_install_window", "node_install_repository_name_edit", "node_install_tag_edit", "node_install_trigger", "node_configure_github_setting_window", "node_github_setting_api_key_edit", "node_github_setting_save_trigger", "node_confirm_delete_window", "node_confirm_vendor_window", "node_http_request", "node_update_notice", "node_update_notice_label", "node_update_trigger", "node_confirm_update_window", "node_update_http_request")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -28,6 +28,11 @@ node_github_setting_save_trigger = NodePath("ConfigureGithubSettingWindow/Panel/
 node_confirm_delete_window = NodePath("ConfirmDeleteWindow")
 node_confirm_vendor_window = NodePath("ConfirmVendorWindow")
 node_http_request = NodePath("HTTPRequest")
+node_update_notice = NodePath("MarginContainer/VBoxContainer/UpdateNotice")
+node_update_notice_label = NodePath("MarginContainer/VBoxContainer/UpdateNotice/Label")
+node_update_trigger = NodePath("MarginContainer/VBoxContainer/UpdateNotice/UpdateTrigger")
+node_confirm_update_window = NodePath("ConfirmUpdateWindow")
+node_update_http_request = NodePath("UpdateHTTPRequest")
 
 [node name="MarginContainer" type="MarginContainer" parent="." unique_id=428407966]
 layout_mode = 1
@@ -70,6 +75,19 @@ text = "Delete"
 [node name="AddonsDisplay" type="ItemList" parent="MarginContainer/VBoxContainer" unique_id=2015576878]
 layout_mode = 2
 size_flags_vertical = 3
+
+[node name="UpdateNotice" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+visible = false
+layout_mode = 2
+
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/UpdateNotice"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Brisklance update available"
+
+[node name="UpdateTrigger" type="Button" parent="MarginContainer/VBoxContainer/UpdateNotice"]
+layout_mode = 2
+text = "Update"
 
 [node name="Footer" type="HBoxContainer" parent="MarginContainer/VBoxContainer" unique_id=973181731]
 layout_mode = 2
@@ -214,6 +232,16 @@ ok_button_text = "Vendor"
 dialog_text = "Are you sure you want to vendor?
 Vendored plugins will be managed manually."
 
+[node name="ConfirmUpdateWindow" type="ConfirmationDialog" parent="."]
+oversampling_override = 1.0
+initial_position = 1
+size = Vector2i(360, 110)
+ok_button_text = "Update"
+dialog_text = "Update Brisklance? The editor will restart."
+
 [node name="HTTPRequest" type="HTTPRequest" parent="." unique_id=733188208]
 download_file = "/var/folders/db/q7rbrbws669d9gckx16sm2jc0000gn/T/979498006-202606021346099708187/brisklance_module.zip"
+accept_gzip = false
+
+[node name="UpdateHTTPRequest" type="HTTPRequest" parent="."]
 accept_gzip = false

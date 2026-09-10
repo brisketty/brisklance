@@ -12,6 +12,16 @@ Then, extract the files and place it under `res://addons/brisklance` directory a
 However, if you are attempting to create plugins that could be installed via Brisklance, it would be wise to utilize this repository as a template.
 This is because this template already set up the necessary Github workflow to publish your plugin in the format acceptable to brisklance.
 
+## Updating Brisklance
+
+Brisklance can update itself.
+On editor start it checks its own repository for the latest release, and clicking **Refresh** in the dock re-checks.
+When a newer version exists, a notice with an **Update** button appears above the Github Setting row in the Brisklance dock.
+Clicking **Update** downloads the new manager, replaces `res://addons/brisklance/manager` in place, and restarts the editor.
+Your own plugin under `res://addons/brisklance/self`, your installed plugins, and your vendored plugins are left untouched.
+
+Setting a GitHub API key in the dock's Github Setting raises the API rate limit but is not required to update from a public repository.
+
 ## Export addons to Brisklance
 
 To make your addons accessible by Brisklance, the only requirement is to upload a `brisklance_module.zip` file as asset to the release of your Github repository.
