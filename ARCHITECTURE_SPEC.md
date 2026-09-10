@@ -35,7 +35,7 @@ restarts. Nothing is applied without an explicit click.
 | Version comparison | Semver compare; offer only when latest is strictly greater than current. |
 | Apply strategy | Swap immediately on click (extract to staging, validate, delete + rename), then restart the editor. |
 | Code structure | Standalone `BrisklanceSelfUpdater` (`RefCounted`) in `manager/scripts/`. |
-| Source repository | Hardcoded constant `RechieKho/brisklance`. |
+| Source repository | Hardcoded constant `brisketty/brisklance`. |
 
 ## Components
 
@@ -45,7 +45,7 @@ restarts. Nothing is applied without an explicit click.
 
 Constants:
 
-- `REPOSITORY_NAME := "RechieKho/brisklance"`
+- `REPOSITORY_NAME := "brisketty/brisklance"`
 - `MANAGER_ZIP_FILE_NAME := "brisklance_manager.zip"`
 - `MANAGER_DIRECTORY_PATH := "res://addons/brisklance/manager"`
 - `STAGING_DIRECTORY_PATH := "res://addons/brisklance/.brisklance_manager_update"`

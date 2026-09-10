@@ -2,7 +2,7 @@
 extends RefCounted
 class_name BrisklanceSelfUpdater
 
-const REPOSITORY_NAME := "RechieKho/brisklance"
+const REPOSITORY_NAME := "brisketty/brisklance"
 const MANAGER_ZIP_FILE_NAME := "brisklance_manager.zip"
 const MANAGER_DIRECTORY_PATH := "res://addons/brisklance/manager"
 const STAGING_DIRECTORY_PATH := "res://addons/brisklance/.brisklance_manager_update"
