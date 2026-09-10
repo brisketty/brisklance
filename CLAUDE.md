@@ -140,3 +140,12 @@ func process_data() -> void:
 
 1. Whenever generating GDScript, adhere strictly to all types, naming prefixes (`node_`, `handle_`, `update_from_`), and export structures outlined above.
 2. If my request asks for a pattern that violates these rules (e.g., using `$` notation or private `_` methods), correct the approach to align with this document.
+
+---
+
+## Workflow Constraints
+
+- **No git worktrees.** Do all work in the primary checkout; do not create or switch to git worktrees.
+- **No subagent-driven development.** Implement plans directly in this session rather than delegating tasks to subagents.
+- The `superpowers` plugin is disabled for this project (see `.claude/settings.json`). Do not use its skills (subagent-driven-development, executing-plans, using-git-worktrees, etc.).
+- The self-update feature is tracked in `REMAINING_TASKS.md`; its design lives in `ARCHITECTURE_SPEC.md`.

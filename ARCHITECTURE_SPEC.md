@@ -1,4 +1,8 @@
-# Brisklance Self-Update — Design
+# Brisklance Self-Update — Architecture Specification
+
+> Vendored from the original design spec so the knowledge lives in-repo.
+> Companion document: [`REMAINING_TASKS.md`](REMAINING_TASKS.md) tracks the
+> phased implementation.
 
 ## Problem
 
@@ -37,7 +41,7 @@ restarts. Nothing is applied without an explicit click.
 
 ### 1. `BrisklanceSelfUpdater` — `manager/scripts/self_updater.gd`
 
-`class_name BrisklanceSelfUpdater`, `extends RefCounted`.
+`class_name BrisklanceSelfUpdater`, `extends RefCounted`, `@tool`.
 
 Constants:
 
@@ -46,27 +50,32 @@ Constants:
 - `MANAGER_DIRECTORY_PATH := "res://addons/brisklance/manager"`
 - `STAGING_DIRECTORY_PATH := "res://addons/brisklance/.brisklance_manager_update"`
 - `CONFIGURATION_FILE_NAME := "plugin.cfg"`
+- `PLUGIN_SECTION_KEY := &"plugin"`, `VERSION_KEY := &"version"`
 - `LATEST_RELEASE_URL_TEMPLATE := "https://api.github.com/repos/{repository_name}/releases/latest"`
 
 Methods:
+
+- `static normalize_version(p_version: String) -> PackedInt32Array`
+  Length-3 array. Strips a single leading `v`/`V`, splits on `.`, parses each
+  segment as `int`, missing segments are `0`.
+
+- `static compare_versions(p_a: String, p_b: String) -> int`
+  Compares normalized versions left to right. Returns `1` if `a` > `b`, `-1` if
+  `a` < `b`, `0` if equal. Pure function, no engine state.
 
 - `get_current_version() -> String`
   Loads `MANAGER_DIRECTORY_PATH/plugin.cfg` via `ConfigFile`, returns
   `[plugin] version` (or `""` on failure).
 
-- `static compare_versions(p_a: String, p_b: String) -> int`
-  Strips a single leading `v`/`V`, splits on `.`, parses each segment as `int`,
-  pads the shorter to length 3 with zeroes, compares left to right. Returns
-  `-1`, `0`, or `1`. Pure function, no engine state.
+- `compute_request_headers(p_accept: String) -> PackedStringArray`
+  Always `Accept: <p_accept>`, plus `Authorization: Bearer <key>` when
+  `BrisklanceLocalDevelopmentStore.get_singleton().github_api_key` is non-empty.
+  Mirrors `BrisklancePluginMirror.compute_download_mirror_request_headers`.
 
 - `fetch_latest_release_metadata(p_http_request: HTTPRequest) -> Dictionary`
-  `GET` the latest-release endpoint. Request headers follow the existing pattern
-  in `BrisklancePluginMirror.compute_download_mirror_request_url` — always
-  `Accept: application/vnd.github+json`, plus
-  `Authorization: Bearer <key>` when
-  `BrisklanceLocalDevelopmentStore.get_singleton().github_api_key` is non-empty.
-  On any failure (request error, non-200, unparseable body) logs via `printerr`
-  in the style of the rest of the codebase and returns `{}`.
+  `GET` the latest-release endpoint with `Accept: application/vnd.github+json`.
+  On any failure (request error, non-`RESULT_SUCCESS`, non-200, unparseable
+  body) logs via `printerr` in the codebase style and returns `{}`.
 
 - `fetch_latest_version(p_http_request: HTTPRequest) -> String`
   Returns `tag_name` from the metadata, or `""`.
@@ -75,38 +84,41 @@ Methods:
   Returns the latest `tag_name` when
   `compare_versions(latest, get_current_version()) > 0`, else `""`.
 
-- `apply_update(p_http_request: HTTPRequest) -> bool`
-  1. `fetch_latest_release_metadata`; find the asset whose `name` equals
-     `MANAGER_ZIP_FILE_NAME`; take its `url` (same asset-lookup loop as
-     `BrisklancePluginMirror.compute_download_mirror_request_url`). Missing asset
-     → `printerr`, return `false`.
-  2. Download to a temp file: `DirAccess.create_temp(...)` for the directory,
-     set `p_http_request.download_file`, request with
-     `Accept: application/octet-stream` + optional auth header (mirrors
-     `BrisklancePluginMirror.compute_download_mirror_request_headers`). Attach
-     `DownloadReporter.start_report(p_http_request)` for progress logging, as in
-     `BrisklancePluginMirror.retreive_self`. Non-200 → `printerr`, return
-     `false`.
-  3. If `STAGING_DIRECTORY_PATH` exists, remove it first
-     (`BrisklancePluginMirror.remove_directory_recursively`). Then
-     `BrisklancePluginMirror.extract_zip_recursively_to_path(zip_path,
+- `resolve_manager_zip_url(p_http_request: HTTPRequest) -> String`
+  From the metadata, the `url` of the asset whose `name` equals
+  `MANAGER_ZIP_FILE_NAME` (same asset-lookup loop as
+  `BrisklancePluginMirror.compute_download_mirror_request_url`). Missing asset →
+  `printerr`, `""`.
+
+- `install_staged_update(p_zip_file_path: String) -> bool`
+  1. If `STAGING_DIRECTORY_PATH` exists, remove it first
+     (`BrisklancePluginMirror.remove_directory_recursively`).
+  2. `BrisklancePluginMirror.extract_zip_recursively_to_path(p_zip_file_path,
      STAGING_DIRECTORY_PATH)`. The archive is rooted at `manager/`, so this
      yields `STAGING_DIRECTORY_PATH/manager/...`.
-  4. **Validate.** `STAGING_DIRECTORY_PATH/manager/plugin.cfg` must exist and its
+  3. **Validate.** `STAGING_DIRECTORY_PATH/manager/plugin.cfg` must exist and its
      `[plugin] version` must compare strictly greater than
      `get_current_version()`. On failure: remove the staging directory,
      `printerr`, return `false`. Nothing destructive has happened yet.
-  5. **Swap.**
+  4. **Swap.**
      `BrisklancePluginMirror.remove_directory_recursively(MANAGER_DIRECTORY_PATH)`,
      then `DirAccess.rename_absolute(STAGING_DIRECTORY_PATH + "/manager",
      MANAGER_DIRECTORY_PATH)`. Remove the now-empty staging directory.
-  6. Return `true`.
+  5. Return `true`.
 
-  The only genuinely dangerous window is a failure between steps 5a and 5b
-  (`manager/` deleted, rename fails). Both paths are in the same project
-  directory on one volume; the error is logged; recovery is the manual
-  `brisklance.zip` reinstall that exists today. Accepted risk for an editor
-  tool.
+- `apply_update(p_http_request: HTTPRequest) -> bool`
+  1. `resolve_manager_zip_url`; empty → `false`.
+  2. Download to a temp file: `DirAccess.create_temp(...)` for the directory,
+     set `p_http_request.download_file`, request with
+     `Accept: application/octet-stream` + optional auth header. Attach
+     `DownloadReporter.start_report(p_http_request)` for progress logging, as in
+     `BrisklancePluginMirror.retreive_self`. Non-200 → `printerr`, `false`.
+  3. `install_staged_update(zip_file_path)`.
+
+The only genuinely dangerous window is a failure between the `manager/` delete
+and the rename. Both paths are in the same project directory on one volume; the
+error is logged; recovery is the manual `brisklance.zip` reinstall that exists
+today. Accepted risk for an editor tool.
 
 ### 2. Dock UI
 
@@ -120,8 +132,10 @@ Methods:
 - New `ConfirmUpdateWindow` `ConfirmationDialog` as a sibling of
   `ConfirmDeleteWindow` / `ConfirmVendorWindow`. `ok_button_text = "Update"`,
   `dialog_text` explaining the editor will restart.
+- New dedicated `UpdateHTTPRequest` `HTTPRequest` node so update traffic never
+  contends with the existing install/commit `HTTPRequest`.
 - The root node's `node_paths` `PackedStringArray` and the `node_*` NodePath
-  assignments gain the four new entries.
+  assignments gain the new entries.
 
 **Script — `manager/interface/brisklance/brisklance.gd`:**
 
@@ -130,21 +144,23 @@ Methods:
   - `node_update_notice_label: Label`
   - `node_update_trigger: BaseButton`
   - `node_confirm_update_window: ConfirmationDialog`
+  - `node_update_http_request: HTTPRequest`
 - New `@export_group("Update Notice", "update_notice_")`:
   - `@export_multiline var update_notice_text_prefix := "Brisklance update available: "`
-- New member: `var self_updater := BrisklanceSelfUpdater.new()`
+- New members: `var self_updater := BrisklanceSelfUpdater.new()`,
+  `var is_checking_for_update := false`
 - New method `check_for_update() -> void`:
-  - `var latest := await self_updater.is_update_available(node_http_request)`
+  - re-entrancy guarded by `is_checking_for_update`
+  - `var latest := await self_updater.is_update_available(node_update_http_request)`
   - empty → `node_update_notice.hide()`, return
   - else → `node_update_notice_label.text = update_notice_text_prefix + latest`,
     `node_update_notice.show()`
-- `_ready()` calls `check_for_update()` after `commit()` (the shared
-  `node_http_request` is serialized behind the awaited `commit()`).
+- `_ready()` calls `check_for_update()` after `commit()`.
 - The existing Refresh button handler also calls `check_for_update()`.
 - New handler `handle_node_update_trigger_pressed()` →
   `node_confirm_update_window.show()`.
 - New handler `handle_node_confirm_update_window_confirmed()`:
-  - `var succeeded := await self_updater.apply_update(node_http_request)`
+  - `var succeeded := await self_updater.apply_update(node_update_http_request)`
   - `succeeded` → `EditorInterface.restart_editor(true)`
   - else → leave the notice visible (error already printed)
 - Both new handlers are connected via `.connect()` in `_ready()`.
@@ -153,6 +169,11 @@ Methods:
 connected in `_ready()`. This file currently wires every signal as an inline
 lambda. New code follows `CLAUDE.md` (named `handle_` methods); the existing
 lambdas are left as-is.
+
+**Deviation from the original design, intentional.** The design said the check
+reuses `node_http_request`; the implementation adds a dedicated
+`node_update_http_request` node instead, to avoid racing the un-awaited
+`commit()` call in `_ready()`. Same UX, no shared-resource contention.
 
 ### 3. Publish workflow — `.github/workflows/publish.yml`
 
@@ -190,7 +211,7 @@ editor start
   -> BrisklanceInterface._ready()
      -> commit()                      (existing)
      -> check_for_update()
-        -> self_updater.is_update_available(node_http_request)
+        -> self_updater.is_update_available(node_update_http_request)
            -> GET releases/latest
            -> compare_versions(tag_name, plugin.cfg version)
         -> update notice shown / hidden
@@ -198,7 +219,7 @@ editor start
 user clicks "Update"
   -> ConfirmUpdateWindow
   -> handle_node_confirm_update_window_confirmed()
-     -> self_updater.apply_update(node_http_request)
+     -> self_updater.apply_update(node_update_http_request)
         -> GET releases/latest, resolve brisklance_manager.zip asset url
         -> download to temp
         -> extract to .brisklance_manager_update/
@@ -214,15 +235,15 @@ user clicks "Update"
   path) or leaves the notice visible (apply path).
 - `apply_update` validates the staged archive before deleting anything.
 - A staging directory left behind by an aborted run is removed at the start of
-  the next `apply_update`.
+  the next `install_staged_update`.
 
 ## Testing
 
 - `BrisklanceSelfUpdater.compare_versions` is a pure function — cover
   `1.2.0` vs `1.10.0`, `v1.2.0` vs `1.2.0`, `1.2` vs `1.2.0`, equal, and
-  greater/less in each position. There is no test harness in the repo today;
-  add a minimal `SceneTree`-based check script under `/tests` (per `CLAUDE.md`
-  directory rules) runnable with `godot --headless --script`.
+  greater/less in each position. Add a minimal `SceneTree`-based check script
+  under `/tests` (per `CLAUDE.md` directory rules) runnable with
+  `godot --headless --script`.
 - The network and filesystem paths are verified manually in-editor against a
   real pre-release: confirm the notice appears, "Update" swaps `manager/`, the
   editor restarts, and the new version no longer shows a notice.
