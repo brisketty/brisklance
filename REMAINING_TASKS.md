@@ -4,89 +4,80 @@ Design: [`ARCHITECTURE_SPEC.md`](ARCHITECTURE_SPEC.md).
 
 ## Implementation status (branch `feat/self-update`)
 
-All five phases are **code-complete**. What is left is verification that needs a
-Godot editor, which is not available in the environment where the code was
-written.
+All five phases are **implemented and verified** against Godot 4.7-stable
+(`Godot_v4.7-stable_win64_console.exe`).
 
 | Phase | Work | Status |
 | --- | --- | --- |
-| 1 | `BrisklanceSelfUpdater` version core + `tests/test_self_updater.gd` | Written |
-| 2 | Release metadata fetch + `is_update_available` | Written |
-| 3 | Download + stage + validate + swap (`apply_update`) | Written |
-| 4 | Dock notice UI + `BrisklanceInterface` wiring (`brisklance.gd` / `.tscn`) | Written |
-| 5 | Publish workflow, version bump to `1.2.0`, README section | Written |
+| 1 | `BrisklanceSelfUpdater` version core + `tests/test_self_updater.gd` | Done · unit test green |
+| 2 | Release metadata fetch + `is_update_available` | Done · live GitHub API verified |
+| 3 | Download + stage + validate + swap (`apply_update`) | Done · `install_staged_update` swap + not-newer rejection verified |
+| 4 | Dock notice UI + `BrisklanceInterface` wiring (`brisklance.gd` / `.tscn`) | Done · project imports clean, classes register |
+| 5 | Publish workflow, version bump to `1.2.0`, README section | Done · workflow YAML valid |
 
-Files touched:
+Files changed (committed on the branch):
 
-- `addons/brisklance/manager/scripts/self_updater.gd` (new)
-- `tests/test_self_updater.gd` (new)
+- `addons/brisklance/manager/scripts/self_updater.gd` (+ `.uid`) — new
+- `tests/test_self_updater.gd` (+ `.uid`) — new
 - `addons/brisklance/manager/interface/brisklance/brisklance.gd`
 - `addons/brisklance/manager/interface/brisklance/brisklance.tscn`
 - `addons/brisklance/manager/plugin.cfg` (`1.1.0` → `1.2.0`)
 - `.github/workflows/publish.yml`
 - `README.md`
 
-## Remaining — needs a Godot 4.6 editor / CLI
+### Verification performed
 
-- [ ] **Run the unit test.** From the project root:
-  ```bash
-  godot --headless --import
-  godot --headless --script res://tests/test_self_updater.gd
-  ```
-  Expect seven `ok:` lines then `All self-updater tests passed.`, exit 0.
-  (If class-name resolution fails, run `godot --headless --editor --quit` once
-  to build caches, then retry.)
+```
+Godot_v4.7-stable_win64_console.exe --headless --import          # clean, BrisklanceSelfUpdater registers
+Godot_v4.7-stable_win64_console.exe --headless --script res://tests/test_self_updater.gd
+  -> 7/7 "ok:" then "All self-updater tests passed.", exit 0
+```
 
-- [ ] **Commit the generated `.gd.uid` files.** Godot writes
-  `self_updater.gd.uid` and `test_self_updater.gd.uid` during `--import`; add
-  them to the branch.
+Live-network scratch check (`SceneTree` + `HTTPRequest`):
 
-- [ ] **Open the project in the editor** and confirm:
-  - No parse/Output errors for `brisklance.gd` / `brisklance.tscn` /
-    `self_updater.gd`.
-  - The Brisklance dock renders with all existing controls intact.
-  - The update-notice row is hidden (no release newer than `1.2.0` exists yet).
-  - Clicking **Refresh** raises no errors.
+```
+latest: v1.2.0            # fetch_latest_release_metadata + fetch_latest_version
+current: 1.2.0            # get_current_version reads manager/plugin.cfg
+update available: ''      # compare_versions: v1.2.0 is not > 1.2.0
+manager zip url: ''       # resolve_manager_zip_url: existing v1.2.0 release has no
+                          # brisklance_manager.zip asset -> printerr + "" (as designed)
+```
 
-- [ ] **Manually verify `get_current_version()`** — temporarily print
-  `BrisklanceSelfUpdater.new().get_current_version()`; expect `1.2.0`.
+Swap scratch check (`install_staged_update` against a hand-built zip rooted at
+`manager/` with `version="9.9.9"`):
 
-- [ ] **Manually verify the network path** — throwaway scene with a `Node` +
-  child `HTTPRequest`:
-  ```gdscript
-  extends Node
-  @export var node_http_request: HTTPRequest
-  func _ready() -> void:
-  	var updater := BrisklanceSelfUpdater.new()
-  	print("latest: ", await updater.fetch_latest_version(node_http_request))
-  	print("current: ", updater.get_current_version())
-  	print("update available: '", await updater.is_update_available(node_http_request), "'")
-  	get_tree().quit()
-  ```
-  Expect the newest `RechieKho/brisklance` tag, `current: 1.2.0`, and (until a
-  `>1.2.0` release is published) `update available: ''`. Delete the scene after.
+```
+run 1 -> true            # extract to staging, validate newer, delete + rename
+target version now: 9.9.9
+run 2 -> false           # 9.9.9 is not newer than 9.9.9 -> abort, staging cleaned
+```
 
-- [ ] **Manually verify `install_staged_update`** against a hand-made archive —
-  see the detailed procedure in git history / the spec (point
-  `MANAGER_DIRECTORY_PATH` at a throwaway `manager_swap_test/`, feed a zip whose
-  root is `manager/` with `version="9.9.9"`, confirm the swap and the
-  not-newer rejection, then revert the constant).
+## Remaining
 
-- [ ] **Verify the release archive layout** once CI runs (or locally with
-  `zip`): `zip -r brisklance_manager.zip manager` from `addons/brisklance` must
-  produce entries rooted at `manager/` (e.g. `manager/plugin.cfg`).
+- [ ] **Merge `feat/self-update` into `main`.**
 
-## Integration verification — after a `>= 1.2.0` release carrying `brisklance_manager.zip`
+- [ ] **Decide the shipping version.** A `v1.2.0` git tag / GitHub release
+  *already exists* (it predates this feature and carries no
+  `brisklance_manager.zip`). Because `manager/plugin.cfg` is now also `1.2.0`,
+  existing installs will **not** see an update until a release tagged
+  **`v1.2.1` or higher** is published with the new workflow. Either bump
+  `manager/plugin.cfg` to `1.2.1` now, or simply cut the first real release as
+  `v1.2.1`.
 
-1. In a project on an older Brisklance, open the editor → dock shows
-   "Brisklance update available: `vX.Y.Z`" with an **Update** button.
-2. Click **Update** → confirm. Console prints download progress,
-   `Brisklance update downloaded.`, `Brisklance update installed. Restart the
-   editor to finish.`
-3. Editor restarts. `manager/plugin.cfg` shows the new version;
-   `.brisklance_manager_update/` is gone.
-4. `self/`, `plugins/`, `self/vendor/` unchanged.
-5. On restart the notice no longer appears.
+- [ ] **Publish a release** with the updated `.github/workflows/publish.yml` so
+  a `brisklance_manager.zip` asset (entries rooted at `manager/`) exists.
+
+- [ ] **End-to-end check after that release** — in a project on an older
+  Brisklance:
+  1. Open the editor → dock shows "Brisklance update available: `vX.Y.Z`" with
+     an **Update** button (above the Github Setting row).
+  2. Click **Update** → confirm. Console prints download progress,
+     `Brisklance update downloaded.`, `Brisklance update installed. Restart the
+     editor to finish.`
+  3. Editor restarts. `manager/plugin.cfg` shows the new version;
+     `res://addons/brisklance/.brisklance_manager_update/` is gone.
+  4. `self/`, `plugins/`, `self/vendor/` unchanged.
+  5. On restart the notice no longer appears.
 
 ## Notes / deviations from the spec
 
@@ -97,3 +88,5 @@ Files touched:
   the file's existing inline-lambda signal wiring is left as-is.
 - `ConfirmUpdateWindow` carries `oversampling_override = 1.0` to match its
   sibling dialogs.
+- The staging directory is `.brisklance_manager_update` (dot-prefixed) so Godot's
+  filesystem scanner ignores it during an in-progress update.
