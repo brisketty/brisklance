@@ -20,7 +20,11 @@ jobs:
         working-directory: ${{ github.workspace }}/addons/brisklance/self
         run: zip -r ${{ github.workspace }}/brisklance_module.zip ./*
 
-      - name: Zip module
+      - name: Zip manager
+        working-directory: ${{ github.workspace }}/addons/brisklance
+        run: zip -r ${{ github.workspace }}/brisklance_manager.zip manager
+
+      - name: Zip suite
         working-directory: ${{ github.workspace }}/addons/brisklance
         run: zip -r ${{ github.workspace }}/brisklance.zip ./*
 
@@ -30,5 +34,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           files: |
             ${{ github.workspace }}/brisklance_module.zip
+            ${{ github.workspace }}/brisklance_manager.zip
             ${{ github.workspace }}/brisklance.zip
             
