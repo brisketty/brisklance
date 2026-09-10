@@ -7,3 +7,8 @@
 
 .vscode/*
 !.vscode/extensions.json
+
+# Brisklance self-update scratch dirs (only present mid-update / after an
+# interrupted update).
+/addons/brisklance/.brisklance_manager_update/
+/addons/brisklance/.brisklance_manager_backup/

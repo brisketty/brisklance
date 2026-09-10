@@ -6,6 +6,7 @@ const REPOSITORY_NAME := "brisketty/brisklance"
 const MANAGER_ZIP_FILE_NAME := "brisklance_manager.zip"
 const MANAGER_DIRECTORY_PATH := "res://addons/brisklance/manager"
 const STAGING_DIRECTORY_PATH := "res://addons/brisklance/.brisklance_manager_update"
+const BACKUP_DIRECTORY_PATH := "res://addons/brisklance/.brisklance_manager_backup"
 const CONFIGURATION_FILE_NAME := "plugin.cfg"
 const PLUGIN_SECTION_KEY := &"plugin"
 const VERSION_KEY := &"version"
@@ -116,14 +117,34 @@ func install_staged_update(p_zip_file_path: String) -> bool:
 		BrisklancePluginMirror.remove_directory_recursively(STAGING_DIRECTORY_PATH)
 		return false
 
-	BrisklancePluginMirror.remove_directory_recursively(MANAGER_DIRECTORY_PATH)
+	# Move the current manager aside rather than deleting it outright, so a failed
+	# swap rolls back to a working install instead of an empty directory.
+	if DirAccess.dir_exists_absolute(BACKUP_DIRECTORY_PATH):
+		BrisklancePluginMirror.remove_directory_recursively(BACKUP_DIRECTORY_PATH)
+	var backup_status := DirAccess.rename_absolute(MANAGER_DIRECTORY_PATH, BACKUP_DIRECTORY_PATH)
+	if backup_status != OK:
+		printerr("Fail to install Brisklance update (Error: {0}). The installation is untouched.".format([error_string(backup_status)]))
+		BrisklancePluginMirror.remove_directory_recursively(STAGING_DIRECTORY_PATH)
+		return false
+
 	var rename_status := DirAccess.rename_absolute(staged_manager_path, MANAGER_DIRECTORY_PATH)
 	if rename_status != OK:
-		printerr("Fail to install Brisklance update (Error: {0}). Reinstall 'brisklance.zip' manually to recover.".format([error_string(rename_status)]))
+		printerr("Fail to install Brisklance update (Error: {0}). Rolling back to the previous version.".format([error_string(rename_status)]))
+		DirAccess.rename_absolute(BACKUP_DIRECTORY_PATH, MANAGER_DIRECTORY_PATH)
+		BrisklancePluginMirror.remove_directory_recursively(STAGING_DIRECTORY_PATH)
 		return false
+
+	BrisklancePluginMirror.remove_directory_recursively(BACKUP_DIRECTORY_PATH)
 	BrisklancePluginMirror.remove_directory_recursively(STAGING_DIRECTORY_PATH)
 	print("Brisklance update installed. Restart the editor to finish.")
 	return true
+
+
+func cleanup_stale_update_directories() -> void:
+	var stale_paths := PackedStringArray([STAGING_DIRECTORY_PATH, BACKUP_DIRECTORY_PATH])
+	for stale_path in stale_paths:
+		if DirAccess.dir_exists_absolute(stale_path):
+			BrisklancePluginMirror.remove_directory_recursively(stale_path)
 
 
 func apply_update(p_http_request: HTTPRequest) -> bool:

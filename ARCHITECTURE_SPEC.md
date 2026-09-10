@@ -49,6 +49,7 @@ Constants:
 - `MANAGER_ZIP_FILE_NAME := "brisklance_manager.zip"`
 - `MANAGER_DIRECTORY_PATH := "res://addons/brisklance/manager"`
 - `STAGING_DIRECTORY_PATH := "res://addons/brisklance/.brisklance_manager_update"`
+- `BACKUP_DIRECTORY_PATH := "res://addons/brisklance/.brisklance_manager_backup"`
 - `CONFIGURATION_FILE_NAME := "plugin.cfg"`
 - `PLUGIN_SECTION_KEY := &"plugin"`, `VERSION_KEY := &"version"`
 - `LATEST_RELEASE_URL_TEMPLATE := "https://api.github.com/repos/{repository_name}/releases/latest"`
@@ -100,11 +101,23 @@ Methods:
      `[plugin] version` must compare strictly greater than
      `get_current_version()`. On failure: remove the staging directory,
      `printerr`, return `false`. Nothing destructive has happened yet.
-  4. **Swap.**
-     `BrisklancePluginMirror.remove_directory_recursively(MANAGER_DIRECTORY_PATH)`,
-     then `DirAccess.rename_absolute(STAGING_DIRECTORY_PATH + "/manager",
-     MANAGER_DIRECTORY_PATH)`. Remove the now-empty staging directory.
+  4. **Swap, with rollback.**
+     `DirAccess.rename_absolute(MANAGER_DIRECTORY_PATH, BACKUP_DIRECTORY_PATH)` —
+     move the live manager aside (fast, no recursive delete). If that fails,
+     abort: the install is untouched.
+     Then `DirAccess.rename_absolute(STAGING_DIRECTORY_PATH + "/manager",
+     MANAGER_DIRECTORY_PATH)`. If *that* fails, rename the backup back into place
+     and abort. On success, `remove_directory_recursively` the backup and the
+     staging directory.
   5. Return `true`.
+
+  `remove_directory_recursively` sets `include_hidden = true` — without it a
+  directory holding a dotfile (`singletons/local_development_store/.gitignore`)
+  can never be emptied, so the old delete-then-rename swap left `manager/`
+  half-gutted and unrecoverable. The backup rename avoids recursive deletion of
+  the live tree entirely. `cleanup_stale_update_directories()` (called from the
+  dock's `_ready()`) removes a leftover `.brisklance_manager_update` /
+  `.brisklance_manager_backup` from an interrupted run.
 
 - `apply_update(p_http_request: HTTPRequest) -> bool`
   1. `resolve_manager_zip_url`; empty → `false`.
@@ -115,10 +128,12 @@ Methods:
      `BrisklancePluginMirror.retreive_self`. Non-200 → `printerr`, `false`.
   3. `install_staged_update(zip_file_path)`.
 
-The only genuinely dangerous window is a failure between the `manager/` delete
-and the rename. Both paths are in the same project directory on one volume; the
-error is logged; recovery is the manual `brisklance.zip` reinstall that exists
-today. Accepted risk for an editor tool.
+The dangerous window is now a failure between the two renames (backup done,
+staged rename failed) — handled by renaming the backup back. All three paths are
+in the same project directory on one volume, so the renames are cheap and
+effectively atomic. If even the rollback rename fails, `.brisklance_manager_backup`
+still holds the complete previous install; recovery is renaming it back to
+`manager/` by hand, or the manual `brisklance.zip` reinstall.
 
 ### 2. Dock UI
 

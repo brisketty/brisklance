@@ -13,15 +13,20 @@ var nested_dependencies : Array
 
 static func remove_directory_recursively(p_directory_path: String) -> void:
 	var directory := DirAccess.open(p_directory_path)
-	
+	if not directory: return
+	# Hidden files (e.g. `.gitignore`) must be removed too, otherwise the
+	# directory stays non-empty and `remove_absolute` below silently fails.
+	directory.include_hidden = true
+	directory.include_navigational = false
+
 	for child_file_name in directory.get_files():
 		var child_file_path := p_directory_path.path_join(child_file_name)
 		DirAccess.remove_absolute(child_file_path)
-	
+
 	for child_directory_name in directory.get_directories():
 		var child_directory_path := p_directory_path.path_join(child_directory_name)
 		remove_directory_recursively(child_directory_path)
-	
+
 	DirAccess.remove_absolute(p_directory_path)
 
 static func extract_zip_recursively_to_path(p_zip_file_path: String, p_target_directory_path: String) -> bool:

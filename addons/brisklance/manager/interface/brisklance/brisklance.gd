@@ -100,8 +100,9 @@ func handle_node_confirm_update_window_confirmed() -> void:
 
 
 func _ready() -> void:
+	self_updater.cleanup_stale_update_directories()
 	commit()
-	
+
 	node_filter_edit.text_changed.connect(func(_p_new_text) -> void:
 		update_addons_display()
 	)
